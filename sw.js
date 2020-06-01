@@ -10,6 +10,7 @@ const assets = [
   './desktop/sources/scripts/lib/theme.js',
   './desktop/sources/scripts/lib/history.js',
   './desktop/sources/scripts/lib/source.js',
+  './desktop/sources/scripts/lib/qrious.js',
   './desktop/sources/scripts/core/library.js',
   './desktop/sources/scripts/core/io.js',
   './desktop/sources/scripts/core/operator.js',

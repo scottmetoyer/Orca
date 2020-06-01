@@ -12,6 +12,9 @@
 /* global Theme */
 
 function Client () {
+  this.isScanningQrCode = false;
+  this.scanBuffer = '';
+
   this.version = 176
   this.library = library
 
@@ -39,6 +42,8 @@ function Client () {
   this.context = this.el.getContext('2d')
 
   this.install = (host) => {
+    host.addEventListener('keydown', this.onKeyDown, false)
+
     host.appendChild(this.el)
     this.theme.install(host)
 
@@ -47,8 +52,10 @@ function Client () {
     this.acels.set('File', 'New', 'CmdOrCtrl+N', () => { this.reset() })
     this.acels.set('File', 'Open', 'CmdOrCtrl+O', () => { this.source.open('orca', this.whenOpen, true) })
     this.acels.set('File', 'Import Modules', 'CmdOrCtrl+L', () => { this.source.load('orca') })
+    this.acels.set('File', 'Scan QR Code', 'CmdOrCtrl+Shift+A', () => { this.scanQrCode() })
     this.acels.set('File', 'Export', 'CmdOrCtrl+S', () => { this.source.write('orca', 'orca', `${this.orca}`, 'text/plain') })
     this.acels.set('File', 'Export Selection', 'CmdOrCtrl+Shift+S', () => { this.source.write('orca', 'orca', `${this.cursor.selection()}`, 'text/plain') })
+    this.acels.set('File', 'Export Selection as QR Code', 'CmdOrCtrl+Shift+C', () => {this.source.write('orca', 'png', `${this.makeQrCode()}`, 'image/png')  })
 
     this.acels.set('Edit', 'Undo', 'CmdOrCtrl+Z', () => { this.history.undo() })
     this.acels.set('Edit', 'Redo', 'CmdOrCtrl+Shift+Z', () => { this.history.redo() })
@@ -123,6 +130,52 @@ function Client () {
 
     this.acels.install(window)
     this.acels.pipe(this.commander)
+  }
+
+  this.scanQrCode = () => {
+    this.isScanningQrCode = true;
+  }
+
+  this.makeQrCode = () => {
+    console.log('Client', 'Rendering QR code');
+    var qr = new QRious({
+      value: this.cursor.selection()
+    });
+
+    return qr.toDataURL();
+  }
+
+  this.onKeyDown = (e) => {
+    if (this.isScanningQrCode === true) {
+      if (e.key === 'Escape') {
+        this.isScanningQrCode = false;
+        this.scanBuffer = '';
+        return;
+      }
+
+      if (e.key === 'Shift') {
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        // Check if the last characer was also an Enter. If so we are at the end of the code.
+        if (this.scanBuffer.length > 0 && this.scanBuffer[this.scanBuffer.length - 1] === '\n') {
+          this.isScanningQrCode = false;
+
+          // Insert the scan text wherever the cursor currently is
+          this.orca.writeBlock(this.cursor.minX, this.cursor.minY, this.scanBuffer, this.cursor.ins)
+          this.history.record(this.orca.s)
+
+          console.log(this.scanBuffer);
+          this.scanBuffer = '';
+        } else {
+          this.scanBuffer += '\n';
+        }
+      } else {
+        this.scanBuffer += e.key;
+      }
+      e.stopPropagation();
+    }
   }
 
   this.start = () => {
